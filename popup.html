@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TGS x FFMPEG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- ░░ HEADER ░░ -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-mark">
+        <span class="logo-bracket">[</span>
+        <span class="logo-text">FF</span>
+        <span class="logo-bracket">]</span>
+      </div>
+      <div class="header-titles">
+        <h1 class="app-title">TGS x FFMPEG</h1>
+        <p class="app-sub">PROCESADOR DE VIDEO EN EL NAVEGADOR</p>
+      </div>
+    </div>
+    <div class="status-pill" id="engineStatus">
+      <span class="status-dot"></span>
+      <span class="status-label" id="engineLabel">LOADING ENGINE</span>
+    </div>
+  </header>
+
+  <div class="divider-glyph">▓▒░&nbsp;&nbsp;PIPELINE CONTROL&nbsp;&nbsp;░▒▓</div>
+
+  <!-- ░░ SOURCE SECTION ░░ -->
+  <section class="panel" id="sourcePanel">
+    <div class="panel-label">01 — SOURCE MEDIA</div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="video/*,audio/*" style="opacity:0;position:absolute;left:0;top:0;width:100%;height:100%;z-index:2;cursor:pointer;" />
+      <div class="drop-icon">⬡</div>
+      <div class="drop-main">DROP FILE OR CLICK TO BROWSE</div>
+      <div class="drop-sub">MP4 · MOV · AVI · MKV · WEBM · MP3 · AAC</div>
+    </div>
+
+    <div class="file-meta" id="fileMeta" style="display:none">
+      <div class="meta-row">
+        <span class="meta-key">FILE</span>
+        <span class="meta-val" id="metaName">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">SIZE</span>
+        <span class="meta-val" id="metaSize">—</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">TYPE</span>
+        <span class="meta-val" id="metaType">—</span>
+      </div>
+      <div class="meta-row" id="previewRow" style="display:none">
+        <span class="meta-key">PREVIEW</span>
+        <span class="meta-val"><video id="filePreview" style="max-width:120px;max-height:60px;vertical-align:middle;" controls></video></span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider-line"></div>
+
+  <!-- ░░ ENCODE OPTIONS ░░ -->
+  <section class="panel">
+    <div class="panel-label">02 — ENCODE OPTIONS</div>
+
+    <div class="options-grid">
+
+      <!-- Scale Factor -->
+      <div class="option-block">
+        <label class="opt-label">SCALE FACTOR</label>
+        <div class="slider-wrap">
+          <input type="range" id="scaleFactor" min="0.1" max="2.0" step="0.05" value="1.0" class="custom-range" />
+          <div class="slider-readout">
+            <span id="scaleDisplay">1.0×</span>
+            <span class="readout-hint" id="resolutionHint">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Codec -->
+      <div class="option-block">
+        <label class="opt-label">VIDEO CODEC</label>
+        <div class="select-wrap">
+          <select id="codecSelect" class="custom-select">
+            <option value="libx264">H.264 (libx264)</option>
+            <option value="libx265">H.265 / HEVC</option>
+            <option value="libvpx-vp9">VP9</option>
+            <option value="copy">Copy (no re-encode)</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+      </div>
+
+      <!-- Bitrate -->
+      <div class="option-block">
+        <label class="opt-label">BITRATE (KBPS) <span class="opt-hint">— blank = auto CRF</span></label>
+        <div class="input-wrap">
+          <input type="number" id="bitrateInput" placeholder="AUTO" min="100" max="100000" class="custom-input" />
+          <span class="input-unit">kbps</span>
+        </div>
+      </div>
+
+      <!-- Output format -->
+      <div class="option-block">
+        <label class="opt-label">OUTPUT FORMAT</label>
+        <div class="select-wrap">
+          <select id="formatSelect" class="custom-select">
+            <option value="mp4">MP4</option>
+            <option value="webm">WEBM</option>
+            <option value="mkv">MKV</option>
+            <option value="mov">MOV</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CRF slider (visible when no bitrate) -->
+    <div class="option-block crf-block">
+      <label class="opt-label">QUALITY — CRF <span class="crf-note" id="crfNote">(lower = better)</span></label>
+      <div class="slider-wrap">
+        <input type="range" id="crfSlider" min="0" max="51" step="1" value="23" class="custom-range crf-range" />
+        <div class="slider-readout">
+          <span id="crfDisplay">23</span>
+          <span class="readout-hint" id="crfQuality">BALANCED</span>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <div class="divider-line"></div>
+
+  <!-- ░░ FRAME INTERPOLATION ░░ -->
+  <section class="panel">
+    <div class="panel-label">03 — FRAME INTERPOLATION</div>
+
+    <div class="interp-row">
+      <div class="interp-info">
+        <div class="interp-title">120 FPS MOTION INTERPOLATION</div>
+        <div class="interp-desc">Uses FFmpeg <code>minterpolate</code> to synthesize intermediate frames via motion compensation. Increases smoothness but adds significant processing time.</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="interpToggle" />
+        <span class="toggle-track">
+          <span class="toggle-thumb"></span>
+        </span>
+        <span class="toggle-state" id="interpState">OFF</span>
+      </label>
+    </div>
+
+    <div class="interp-options" id="interpOptions" style="display:none">
+      <div class="option-block">
+        <label class="opt-label">ALGORITHM</label>
+        <div class="select-wrap">
+          <select id="interpAlgo" class="custom-select">
+            <option value="mci">MCI (Motion-Compensated)</option>
+            <option value="blend">Blend (Frame Blending)</option>
+            <option value="dup">Duplicate Frames</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+      </div>
+      <div class="option-block">
+        <label class="opt-label">TARGET FPS</label>
+        <div class="select-wrap">
+          <select id="targetFps" class="custom-select">
+            <option value="60">60 FPS</option>
+            <option value="120" selected>120 FPS</option>
+            <option value="240">240 FPS</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <div class="divider-line"></div>
+
+  <!-- ░░ PROCESS / OUTPUT ░░ -->
+  <section class="panel process-section">
+    <div class="panel-label">04 — PROCESS &amp; EXPORT</div>
+
+    <!-- Status terminal -->
+    <div class="terminal-box" id="terminalBox">
+      <div class="terminal-header">
+        <span class="term-dot red"></span>
+        <span class="term-dot yellow"></span>
+        <span class="term-dot green"></span>
+        <span class="term-title">ffmpeg output</span>
+      </div>
+      <div class="terminal-body" id="terminalBody">
+        <span class="term-prompt">$</span>
+        <span class="term-idle" id="termIdle">Waiting for input...</span>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section" id="progressSection" style="display:none">
+      <div class="progress-meta">
+        <span class="prog-label" id="progressLabel">PROCESSING</span>
+        <span class="prog-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        <div class="progress-glow" id="progressGlow" style="left:0%"></div>
+      </div>
+      <div class="progress-detail" id="progressDetail">Initializing FFmpeg engine...</div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="action-row">
+      <button class="btn-process" id="processBtn" disabled>
+        <span class="btn-icon">▶</span>
+        <span class="btn-text">PROCESS VIDEO</span>
+        <span class="btn-shimmer"></span>
+      </button>
+      <button class="btn-cancel" id="cancelBtn" style="display:none">
+        <span>■ CANCEL</span>
+      </button>
+    </div>
+
+    <!-- Download area -->
+    <div class="download-area" id="downloadArea" style="display:none">
+      <div class="dl-icon">↓</div>
+      <div class="dl-info">
+        <div class="dl-title">OUTPUT READY</div>
+        <div class="dl-detail" id="dlDetail">—</div>
+      </div>
+      <a class="btn-download" id="downloadBtn" download>DOWNLOAD</a>
+    </div>
+
+  </section>
+
+  <footer class="app-footer">
+    <span>FFMPEG.WASM ENGINE</span>
+    <span class="footer-sep">◆</span>
+    <span>ALL PROCESSING LOCAL</span>
+    <span class="footer-sep">◆</span>
+    <span>NO UPLOAD</span>
+  </footer>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

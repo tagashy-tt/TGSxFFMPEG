@@ -1,0 +1,8 @@
+{
+  "name": "ffmpeg-studio",
+  "version": "1.0.0",
+  "description": "TGS x FFMPEG - Video Processor",
+  "scripts": {
+    "start": "npx http-server -c-1 -p 8080 --cors --header \"Cross-Origin-Opener-Policy: same-origin\" --header \"Cross-Origin-Embedder-Policy: require-corp\""
+  }
+}
